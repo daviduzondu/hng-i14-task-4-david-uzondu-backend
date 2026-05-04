@@ -58,6 +58,12 @@ model profiles {
     country_name        String
     created_at          DateTime @default(now()) @db.Timestamptz()
     updated_at          DateTime @default(now()) @db.Timestamptz()
+
+    @@index([gender])
+    @@index([age])
+    @@index([country_name])
+
+    @@index([gender, age, country_name])
 }
 
 enum Role {
