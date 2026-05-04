@@ -1,0 +1,78 @@
+generator kysely {
+    provider = "prisma-kysely"
+    output   = "../db/generated"
+    fileName = "types.ts"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model users {
+    id            String   @id @unique @default(dbgenerated("gen_random_uuid()"))
+    github_id     String   @unique
+    username      String
+    email         String
+    avatar_url    String
+    role          Role     @default(analyst)
+    is_active     Boolean
+    last_login_at DateTime @db.Timestamptz()
+    created_at    DateTime @default(now()) @db.Timestamptz()
+    updated_at    DateTime @default(now()) @db.Timestamptz()
+
+    // Relations
+    refresh_tokens refresh_tokens[]
+}
+
+model refresh_tokens {
+    id         String   @id @unique @default(dbgenerated("gen_random_uuid()"))
+    user_id    String
+    token_hash String   @unique
+    expires_at DateTime @db.Timestamptz()
+
+    created_at DateTime @default(now()) @db.Timestamptz()
+    updated_at DateTime @default(now()) @db.Timestamptz()
+
+    // Relations
+    users users @relation(fields: [user_id], references: [id])
+
+    @@index([user_id])
+}
+
+model rate_limit {
+    key        String   @id @unique
+    points     Int      @default(0)
+    expire     BigInt
+
+}
+
+model profiles {
+    id                  String   @id @unique @default(dbgenerated("gen_random_uuid()"))
+    name                String
+    gender              Gender
+    gender_probability  Float
+    age                 Int
+    age_group           AgeGroup
+    country_id          String
+    country_probability Float
+    country_name        String
+    created_at          DateTime @default(now()) @db.Timestamptz()
+    updated_at          DateTime @default(now()) @db.Timestamptz()
+}
+
+enum Role {
+    admin
+    analyst
+}
+
+enum Gender {
+    female
+    male
+}
+
+enum AgeGroup {
+    child
+    teenager
+    adult
+    senior
+}

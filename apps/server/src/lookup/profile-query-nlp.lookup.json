@@ -1,0 +1,125 @@
+{
+ "min_age": [
+  "at least #Value years old",
+  "(min|minimum)? age (is|of|from|at|starting at)? #Value",
+  "no younger than #Value",
+  "age starting at #Value",
+  "from age #Value",
+  "aged #Value",
+  "above #Value"
+ ],
+ "max_age": [
+  "up to #Value",
+  "no! younger than #Value",
+  "(no older than) #Value",
+  "(max|maximum) age (is|of|up to|at)? #Value",
+  "at most #Value years old?",
+  "to age? #Value",
+  "below #Value"
+ ],
+ "min_gender_probability": [
+  "(gender confidence|gender certainty|gender probability|gender_probability) (of at least|starting at) #Value",
+  "(min|minimum) (gender confidence|gender probability|gender certainty|gender_probability) (is|of|from|at|starting at) #Value"
+ ],
+ "min_country_probability": [
+  "(country confidence|country certainty|country probability|country_probability) (of at least|starting at) #Value",
+  "(min|minimum) (country confidence|country certainty|country probability|country_probability) (is|of|from|at|starting at) #Value"
+ ],
+ "gender": {
+  "male": [
+   "male",
+   "males",
+   "man",
+   "men",
+   "boy",
+   "boys",
+   "gentleman",
+   "gentlemen",
+   "guy",
+   "guys"
+  ],
+  "female": [
+   "female",
+   "females",
+   "woman",
+   "women",
+   "girl",
+   "girls",
+   "lady",
+   "ladies"
+  ]
+ },
+ "age_group": {
+  "child": [
+   "child",
+   "children",
+   "kid",
+   "kids",
+   "minor",
+   "minors"
+  ],
+  "teenager": [
+   "teenager",
+   "teenagers",
+   "teen",
+   "teens",
+   "adolescent",
+   "adolescents"
+  ],
+  "adult": [
+   "adult",
+   "adults",
+   "grown up",
+   "grown ups",
+   "grown-up",
+   "grown-ups",
+   "lady",
+   "babe",
+   "babes",
+   "ladies",
+   "gentleman",
+   "gentlemen"
+  ],
+  "senior": [
+   "senior",
+   "seniors",
+   "elderly",
+   "retired",
+   "retirees",
+   "lady",
+   "ladies",
+   "gentleman",
+   "gentlemen"
+  ]
+ },
+ "sort_by": {
+  "age": [
+   "(sort|group|arrange) by age",
+   "(sorted|grouped|arranged) by age"
+  ],
+  "created_at": [
+   "(sort|group|arrange) by created at",
+   "(sorted|grouped|arranged) by created at"
+  ],
+  "gender_probability": [
+   "(sort|group|arrange) by (gender confidence|gender certainty|gender probability|gender_probability)",
+   "(sorted|grouped|arranged) by (gender confidence|gender certainty|gender probability|gender_probability)"
+  ]
+ },
+ "order": {
+  "asc": [
+   "ascending",
+   "asc",
+   "lowest first",
+   "a to z",
+   "oldest first"
+  ],
+  "desc": [
+   "desc",
+   "descending",
+   "highest first",
+   "z to a",
+   "newest first"
+  ]
+ }
+}

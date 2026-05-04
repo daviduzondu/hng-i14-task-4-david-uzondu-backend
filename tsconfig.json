@@ -1,0 +1,10 @@
+{
+ "extends": "@hng-i14-task-0-david-uzondu/config/tsconfig.base.json",
+ "compilerOptions": {
+  "module": "es2022",
+  "lib": [
+   "ESNext",
+   "DOM"
+  ],
+ }
+}
