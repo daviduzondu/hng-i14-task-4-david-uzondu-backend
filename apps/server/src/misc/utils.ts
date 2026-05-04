@@ -16,6 +16,7 @@ import {
 } from "rate-limiter-flexible";
 import { pool } from "@/db/pool";
 import { millisecondsToSeconds, minutesToSeconds } from "date-fns";
+import crypto from "node:crypto";
 
 export const createRateLimiter = (options: IRateLimiterOptions) =>
   new RateLimiterPostgres({
@@ -201,7 +202,16 @@ export function makeGitHubHeaders(access_token: string) {
   };
 }
 
-
+export function getQueryHash(obj: z.infer<typeof profileQuerySchema>) {
+  const str = JSON.stringify(
+    Object.fromEntries(
+      Object.keys(obj)
+        .sort()
+        .map((key) => [key, obj[key as keyof typeof obj]]),
+    ),
+  );
+  return crypto.createHash("sha256").update(str).digest("hex");
+}
 
 // const hasMatch = (values: string[]) =>
 //  values.some(v => {
