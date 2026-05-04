@@ -7,6 +7,7 @@
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/server.ts --outfile server",
     "dev": "tsx watch src/server.ts",
+    "generate:data": "tsx src/scripts/generate-csv-data.ts",
     "start": "node dist/server.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts"

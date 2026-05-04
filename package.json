@@ -12,6 +12,7 @@
     "check-types": "pnpm -r check-types",
     "dev": "pnpm --filter server dev",
     "start": "pnpm --filter server start",
+    "generate:data": "pnpm --filter server generate:data",
     "prisma": "pnpm -F server exec pnpm dlx prisma --",
     "migrate:dev": "pnpm -F server exec pnpm dlx prisma migrate dev",
     "migrate:deploy": "pnpm -F server exec pnpm dlx prisma migrate deploy",
