@@ -58,8 +58,8 @@ model profiles {
     created_at          DateTime @default(now()) @db.Timestamptz()
     updated_at          DateTime @default(now()) @db.Timestamptz()
 
-    @@index([name])
-    @@index([country_name, gender, age])
+    @@index([name]) // Single-column index
+    @@index([country_name, gender, age]) // Composite index
     @@index([age])
 }
 
