@@ -1,4 +1,4 @@
-import app from '@/app';
+import {app} from '@/app';
 import { env } from "@hng-i14-task-0-david-uzondu/env/server";
 
 app.listen(env.PORT, () => {

@@ -20,7 +20,8 @@ export const env = createEnv({
     GITHUB_OAUTH_BROWSER_CLIENT_SECRET: z.string(),
     GITHUB_OAUTH_CLI_CLIENT_ID: z.string(),
     GITHUB_OAUTH_CLI_CLIENT_SECRET: z.string(),
-    CLI_CALLBACK_URL: z.string()
+    CLI_CALLBACK_URL: z.string(),
+    REDIS_URL: z.string(),
   },
   clientPrefix: "PUBLIC_",
   client: {},

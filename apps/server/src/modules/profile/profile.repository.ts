@@ -13,6 +13,8 @@ import { pool } from "@/db/pool";
 import { from as copyFrom } from "pg-copy-streams";
 import type Stream from "stream";
 import { pipeline } from "stream/promises";
+import { redis } from "@/app";
+import { getQueryHash } from "@/misc/utils";
 
 export const findProfileById = async (id: string) =>
   await db
@@ -89,8 +91,13 @@ export const createNewProfile = async ({
 
 export const filterProfiles = async (
   query: z.infer<typeof profileQuerySchema> & { offset?: number },
-) =>
-  await db
+) => {
+  console.log(
+    `Hash: ${getQueryHash(query)}`,
+    await redis.get(getQueryHash(query)),
+  );
+
+  return await db
     .selectFrom("profiles")
     .$if(!!query.gender, (qb) =>
       qb.where((eb) =>
@@ -131,6 +138,7 @@ export const filterProfiles = async (
     .selectAll()
     .select(({ eb }) => [eb.fn.count("id").over().as("total")])
     .execute();
+};
 
 export const bulkInsertProfiles = async (
   stream: Stream.Readable,

@@ -22,10 +22,12 @@ export const createProfile = async (
 };
 
 export const searchProfiles = async (
-  req: Request<object, object, object, z.infer<typeof profileSearchSchema>>,
+  req: Request,
   res: Response<SuccessResponse | ErrorResponse>,
 ) => {
-  const result = await profileService.searchProfiles(req.query);
+  const result = await profileService.searchProfiles(
+    req.query as unknown as z.infer<typeof profileSearchSchema>,
+  );
   return res.status(result.statusCode).json(result.body);
 };
 
