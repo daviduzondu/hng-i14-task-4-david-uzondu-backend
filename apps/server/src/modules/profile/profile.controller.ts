@@ -9,6 +9,9 @@ import type {
 import type z from "zod";
 import { format } from "date-fns";
 import { StatusCodes } from "http-status-codes";
+import { Readable } from "node:stream";
+import { parse } from "csv-parse";
+import busboy from "busboy";
 
 export const createProfile = async (
   req: Request<object, object, { name: string }, object>,
@@ -66,4 +69,15 @@ export const exportProfile = async (
       message: "Failed to generate CSV file",
     });
   }
+};
+
+export const uploadCsv = async (
+  req: Request<object, object, object, object>,
+  res: Response,
+) => {
+  const bb = busboy({ headers: req.headers });
+  req.pipe(bb);
+
+  const result = await profileService.processUpload(bb);
+  res.status(StatusCodes.OK).json({ status: "success", ...result });
 };

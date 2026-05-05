@@ -1,13 +1,16 @@
 import { AppError } from "@/errors/app.error";
 import {
+  bulkInsertProfiles,
   createNewProfile,
   deleteProfileById,
   filterProfiles,
   findProfileById,
   findProfileByName,
+  findProfilesByNames,
 } from "@/modules/profile/profile.repository";
 import { catchAndThrowError, parseSearchQuery } from "@/misc/utils";
 import {
+  csvRowSchema,
   exportProfilesSchema,
   profileQuerySchema,
   profileSearchSchema,
@@ -22,10 +25,16 @@ import type {
 import type { AxiosResponse } from "axios";
 import axios from "axios";
 import { StatusCodes } from "http-status-codes";
-import z from "zod";
-import { NoResultError } from "kysely";
+import z, { type TypeOf } from "zod";
+import { NoResultError, type ValueExpression } from "kysely";
 import { json2csv } from "json-2-csv";
-import type { profiles } from "@/db/generated/types";
+import type { AgeGroup, DB, profiles } from "@/db/generated/types";
+import { type Busboy } from "busboy";
+import { parse } from "csv-parse";
+import { countries } from "@/lookup/country-code.lookup.json";
+import { db } from "@/db/db";
+import _ from "lodash";
+import { error } from "console";
 
 type StandardServiceResponse<S = SuccessResponse, E = ErrorResponse> = Promise<{
   statusCode: number;
@@ -288,4 +297,161 @@ export async function exportProfile(
       status: "success",
     },
   };
+}
+
+const VALID_COUNTRY_CODES = new Set(countries.map((c) => c.code));
+
+export async function processUpload(bb: Busboy): Promise<{
+  total_rows: number;
+  inserted: number;
+  skipped: number;
+  reasons: {
+    duplicate_name: number;
+    invalid_age: number;
+    missing_fields: number;
+  };
+}> {
+  const stats = {
+    total_rows: 0,
+    inserted: 0,
+    skipped: 0,
+    reasons: {
+      duplicate_name: 0,
+      invalid_age: 0,
+      missing_fields: 0,
+    },
+  };
+
+  const chunk: z.infer<typeof csvRowSchema>[] = [];
+  const CHUNK_SIZE = 2000;
+
+  return await catchAndThrowError(
+    async () => {
+      await new Promise<void>((resolve, reject) => {
+        bb.on("file", (name, stream, info) => {
+          stream
+            .pipe(parse({ columns: true, skip_records_with_error: true }))
+            .on("skip", async () => {
+              stats.total_rows++;
+              stats.skipped++;
+              stats.reasons.missing_fields++;
+            })
+            .on("data", async (row: z.infer<typeof csvRowSchema>) => {
+              chunk.push(row);
+              stats.total_rows++;
+              if (chunk.length >= CHUNK_SIZE) {
+                stream.pause();
+                try {
+                  await processChunk();
+                } catch (error) {
+                  reject(error);
+                }
+                await new Promise((r) => setImmediate(r));
+                stream.resume();
+              }
+            })
+            .on("end", async () => {
+              try {
+                await processChunk();
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            })
+            .on("error", (err) => {
+              console.error(err);
+              reject(
+                new AppError({
+                  code: StatusCodes.INTERNAL_SERVER_ERROR,
+                  message: "Processing failed",
+                }),
+              );
+            });
+
+          async function processChunk() {
+            const batch = chunk.splice(0, CHUNK_SIZE);
+            if (batch.length === 0) return;
+
+            // called ONCE per chunk, not once per row
+            // const existingNamesSet = await findProfilesByNames(
+            //   batch.map((b) => b.name),
+            // );
+
+            const cleanBatch = batch.filter((b) => {
+              // if (existingNamesSet.has(b.name.toLowerCase().trim())) {
+              //   stats.skipped++;
+              //   stats.reasons.duplicate_name++;
+              //   return false;
+              // }
+              if (csvRowSchema.shape.age.safeParse(b.age).error) {
+                stats.skipped++;
+                stats.reasons.invalid_age++;
+                return false;
+              }
+              if (Object.keys(b).length < 6) {
+                stats.skipped++;
+                stats.reasons.missing_fields++;
+                return false;
+              }
+              if (csvRowSchema.safeParse(b).error) {
+                console.error(b, csvRowSchema.safeParse(b).error);
+                stats.skipped++;
+                stats.reasons.missing_fields++;
+                return false;
+              }
+              if (!countries.find((c) => c.code === b.country_id)?.name) {
+                stats.skipped++;
+                stats.reasons.missing_fields++;
+                return false;
+              }
+
+              return true;
+            });
+
+            if (cleanBatch.length === 0) return;
+            const insertResult = await db
+              .insertInto("profiles")
+              .values(
+                cleanBatch.map((b) => ({
+                  name: b.name,
+                  age: Number(b.age),
+                  age_group: ((
+                    age: number,
+                  ): ValueExpression<DB, "profiles", AgeGroup> => {
+                    if (age <= 12) return "child";
+                    if (age <= 19) return "teenager";
+                    if (age <= 59) return "adult";
+                    return "senior";
+                  })(b.age),
+                  country_id: b.country_id,
+                  country_name: countries.find((c) => c.code === b.country_id)!
+                    .name,
+                  gender: b.gender,
+                  gender_probability: b.gender_probability ?? 1,
+                  country_probability: b.country_probability ?? 1,
+                })),
+              )
+              .onConflict((oc) => oc.doNothing())
+              .returning(["name"])
+              .execute();
+
+            stats.reasons.duplicate_name +=
+              cleanBatch.length - insertResult.length;
+            stats.skipped += cleanBatch.length - insertResult.length;
+            stats.inserted += insertResult.length;
+          }
+        });
+        bb.on("error", reject);
+      });
+      console.log(stats);
+      return stats;
+    },
+    {
+      internalServerError: {
+        errorClass: Error,
+        code: StatusCodes.INTERNAL_SERVER_ERROR,
+        message: "Processing failed",
+      },
+    },
+  );
 }
