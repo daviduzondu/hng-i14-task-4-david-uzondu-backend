@@ -174,12 +174,13 @@ export async function catchAndThrowError<T>(
     const result = await fn();
     return result;
   } catch (error) {
-    // console.error(error);
+    console.error(error);
     for (const map of Object.values(errorMap)) {
       if (error instanceof map.errorClass) {
         const code =
-          map.getCode(error) ?? map.code ?? StatusCodes.INTERNAL_SERVER_ERROR;
-        console.log(code);
+          map.getCode && map?.getCode(error)
+            ? map?.getCode(error)
+            : (map.code ?? StatusCodes.INTERNAL_SERVER_ERROR);
 
         throw new AppError({
           message: error.message ?? map.message,
@@ -187,7 +188,6 @@ export async function catchAndThrowError<T>(
         });
       }
     }
-    console.log("HERE O!");
     throw new Error("Something went wrong!", {
       cause: error,
     });

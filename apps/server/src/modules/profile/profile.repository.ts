@@ -9,6 +9,10 @@ import type { profileQuerySchema } from "@/schema/profile.schema";
 import { sql, type ValueExpression } from "kysely";
 import type z from "zod";
 import { countries } from "@/lookup/country-code.lookup.json";
+import { pool } from "@/db/pool";
+import { from as copyFrom } from "pg-copy-streams";
+import type Stream from "stream";
+import { pipeline } from "stream/promises";
 
 export const findProfileById = async (id: string) =>
   await db
@@ -30,6 +34,18 @@ export const findProfileByName = async (name: string) =>
     .where((eb) => eb(sql`LOWER(TRIM(name))`, "=", name.toLowerCase().trim()))
     .selectAll()
     .executeTakeFirst();
+
+export const findProfilesByNames = async (names: string[]) => {
+  const normalizedNames = names.map((n) => n.toLowerCase().trim());
+
+  const rows = await db
+    .selectFrom("profiles")
+    .select("name")
+    .where((eb) => eb(sql`LOWER(TRIM(name))`, "in", normalizedNames))
+    .execute();
+
+  return new Set(rows.map((r) => r.name.toLowerCase().trim()));
+};
 
 export const createNewProfile = async ({
   age,
@@ -67,6 +83,7 @@ export const createNewProfile = async ({
       gender_probability: gender_probability ?? 1,
       name: name,
     })
+    .onConflict((oc) => oc.doNothing())
     .returningAll()
     .executeTakeFirst();
 
@@ -114,3 +131,19 @@ export const filterProfiles = async (
     .selectAll()
     .select(({ eb }) => [eb.fn.count("id").over().as("total")])
     .execute();
+
+export const bulkInsertProfiles = async (
+  stream: Stream.Readable,
+  keys: string[],
+) => {
+  const client = await pool.connect();
+  try {
+    const pgCopyStream = client.query(
+      copyFrom(`COPY profiles (${keys.join(", ")})
+          FROM STDIN WITH CSV HEADER`),
+    );
+    await pipeline(stream, pgCopyStream);
+  } finally {
+    client.release();
+  }
+};

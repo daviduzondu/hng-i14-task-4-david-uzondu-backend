@@ -47,7 +47,7 @@ model rate_limit {
 
 model profiles {
     id                  String   @id @unique @default(dbgenerated("gen_random_uuid()"))
-    name                String
+    name                String   @unique @db.Citext
     gender              Gender
     gender_probability  Float
     age                 Int

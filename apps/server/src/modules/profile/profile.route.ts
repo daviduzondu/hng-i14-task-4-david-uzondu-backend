@@ -6,6 +6,7 @@ import {
   getProfileById,
   getProfiles,
   searchProfiles,
+  uploadCsv,
 } from "@/modules/profile/profile.controller";
 import { authenticate, authorize } from "@/modules/auth/auth.middleware";
 import { validateSchema } from "@/misc/utils";
@@ -39,5 +40,5 @@ router.get(
 router.get("/:id", authorize(["admin", "analyst"]), getProfileById);
 router.delete("/:id", authorize(["admin"]), deleteProfile);
 router.post("/", authorize(["admin"]), validateCreateProfile, createProfile);
-
+router.post('/upload', authorize(['admin']), uploadCsv);
 export default router;
