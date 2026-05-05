@@ -16,7 +16,7 @@ This document outlines the implementation of three key optimizations for the Ins
 
 **a) PostgreSQL citext Extension**
 
-We added the `citext` extension for the `name` column in the profiles table:
+The schema uses the `citext` extension for the `name` column:
 
 ```prisma
 model profiles {
@@ -29,10 +29,9 @@ model profiles {
 `citext` is a PostgreSQL extension that provides a case-insensitive character string type. It behaves like `text` but performs comparisons by internally calling `lower()` on both strings, making queries case-insensitive by default.
 
 **How it speeds up queries:**
-- Eliminates the need for `LOWER()` calls in every query: instead of `WHERE LOWER(name) = LOWER(?)`, you can use `WHERE name = ?`
-- The unique constraint now enforces case-insensitive uniqueness automatically
-- With an index, queries are fast (1-2ms vs sequential scans that take hundreds of ms on large datasets)
-- Benchmark: citext with index is ~7x faster than text with `LOWER()` function (540ms → 1-2ms on 10M rows)
+- Eliminates the need for `LOWER()` calls in every query
+- The unique constraint enforces case-insensitive uniqueness automatically
+- With an index, queries are fast (1-2ms vs sequential scans on large datasets)
 
 **b) Database Indexing**
 
@@ -79,11 +78,11 @@ export function cache(ttlSeconds = 60, getKey?: (r: Request) => string) {
 - `GET /api/profiles/:id` — TTL: 300s
 
 **Cache invalidation:**
-Caches are invalidated on profile creation, upload, and deletion:
+Caches are invalidated on profile creation, upload, and deletion via the controller:
 
 ```typescript
-// In createProfile, uploadCsv, deleteProfile services
-await redis.delByPattern("cache:*");
+// In createProfile, uploadCsv, deleteProfile controllers
+await redis.del(`cache:${req.originalUrl}`);
 ```
 
 ---
@@ -237,22 +236,42 @@ bb.on("file", (name, stream, info) => {
 
 ## Before/After Performance Comparison
 
-Based on testing with autocannon (10 concurrent connections, 30s duration):
+Benchmarked using autocannon with 10 concurrent connections over 30 seconds:
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| GET /api/profiles/?gender=male | ~800ms | ~120ms | ~6.7x faster |
-| GET /api/profiles/search?q=females in nigeria | ~950ms | ~180ms | ~5.3x faster |
-| GET /api/profiles/:id (cached) | N/A | ~5ms | N/A |
-| GET /api/profiles/export (1000 rows) | ~1200ms | ~400ms | 3x faster |
+### Autocannon Command Used
 
-Notes:
-- Measurements from server on port 6070 (before) vs port 3000 (after with Redis)
-- Database with ~10,000 profiles
-- Tests run during off-peak hours
-- First request still hits DB, subsequent requests hit cache
+```bash
+TOKEN="<access_token>"
 
----
+# Cold cache (first request hits DB)
+autocannon -c 10 -d 30 "http://localhost:6060/api/profiles?limit=20" \
+  -H "Authorization: Bearer $TOKEN" -H "x-api-version: 1" -m GET
+
+# Warm cache (subsequent requests hit Redis)
+# First, populate the cache:
+curl -s "http://localhost:6060/api/profiles?limit=20" \
+  -H "Authorization: Bearer $TOKEN" -H "x-api-version: 1" -o /dev/null
+
+# Then run the same autocannon command
+```
+
+### Results: Cold Cache (Database)
+
+| Endpoint | P50 | P95 | Avg | Requests/sec |
+|---------|-----|-----|-----|--------------|
+| GET /api/profiles?limit=20 | 7ms | 79ms | 12.04ms | 24,000 |
+| GET /api/profiles/search?q=young+males+in+nigeria | 21ms | 237ms | 41.68ms | 7,000 |
+| GET /api/profiles/:id | 18ms | 246ms | 41.57ms | 7,000 |
+| GET /api/profiles?gender=male&min_age=18&max_age=35 | 22ms | 221ms | 42.17ms | 7,000 |
+
+### Results: Warm Cache (Redis)
+
+| Endpoint | P50 | P95 | Avg | Requests/sec |
+|---------|-----|-----|-----|--------------|
+| GET /api/profiles?limit=20 | 9ms | 104ms | 15.29ms | 19,000 |
+| GET /api/profiles/search?q=young+males+in+nigeria | 11ms | 185ms | 24.71ms | 12,000 |
+| GET /api/profiles/:id | 25ms | 219ms | 43.1ms | 7,000 |
+| GET /api/profiles?gender=male&min_age=18&max_age=35 | 24ms | 229ms | 43.51ms | 7,000 |
 
 ## Technologies Used
 
