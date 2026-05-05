@@ -90,7 +90,6 @@ export const createNewProfile = async ({
 export const filterProfiles = async (
   query: z.infer<typeof profileQuerySchema> & { offset?: number },
 ) => {
-  console.log(query.limit)
 
   return await db
     .selectFrom("profiles")

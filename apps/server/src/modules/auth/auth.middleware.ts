@@ -53,7 +53,6 @@ export function authorize(roles: Role[]) {
     next: NextFunction,
   ) => {
     if (!roles.includes(req.user?.role)) {
-      console.log(roles);
       throw new AppError({
         message: "Insufficient permissions. You must be signed in as an admin",
         code: StatusCodes.FORBIDDEN,

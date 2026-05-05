@@ -210,7 +210,6 @@ export function getQueryHash(obj: z.infer<typeof profileQuerySchema>) {
         .sort(([a], [b]) => a.localeCompare(b)),
     ),
   );
-  console.log(str);
   return crypto.createHash("sha256").update(str).digest("hex");
 }
 

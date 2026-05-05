@@ -12,12 +12,14 @@ import { StatusCodes } from "http-status-codes";
 import { Readable } from "node:stream";
 import { parse } from "csv-parse";
 import busboy from "busboy";
+import { redis } from "@/app";
 
 export const createProfile = async (
   req: Request<object, object, { name: string }, object>,
   res: Response<SuccessResponse | ErrorResponse>,
 ) => {
   const result = await profileService.createProfile(req.body.name);
+  await redis.del(`cache:${req.originalUrl}`);
   return res.status(result.statusCode).json(result.body);
 };
 
@@ -52,6 +54,7 @@ export const deleteProfile = async (
   res: Response,
 ) => {
   const result = await profileService.deleteProfile(req.params.id);
+  await redis.del(`cache:${req.originalUrl}`);
   return res.status(result.statusCode).json();
 };
 

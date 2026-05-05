@@ -9,7 +9,13 @@ export function cache(ttlSeconds = 60, getKey?: (r: Request) => string) {
     const cached = await redis.get(key);
 
     if (cached) {
-      console.log("Resource found in cache!", key);
+      console.log(
+        `[${req.method.toUpperCase()}]`,
+        "-",
+        `${req.originalUrl}`,
+        "Resource found in cache!",
+        key,
+      );
       return res.json(JSON.parse(cached));
     }
 

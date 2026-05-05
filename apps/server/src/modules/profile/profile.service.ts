@@ -153,7 +153,7 @@ export async function searchProfiles(
       },
       statusCode: StatusCodes.BAD_REQUEST,
     };
-    
+
   const result = await filterProfiles({
     ...query,
     limit: parsedPayload.limit,
@@ -443,7 +443,6 @@ export async function processUpload(bb: Busboy): Promise<{
         });
         bb.on("error", reject);
       });
-      console.log(stats);
       return stats;
     },
     {
