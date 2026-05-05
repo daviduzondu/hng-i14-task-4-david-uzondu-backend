@@ -153,7 +153,7 @@ export async function searchProfiles(
       },
       statusCode: StatusCodes.BAD_REQUEST,
     };
-
+    
   const result = await filterProfiles({
     ...query,
     limit: parsedPayload.limit,
@@ -217,7 +217,7 @@ export async function getProfiles(
   const offset = (parsedQuery.page - 1) * parsedQuery.limit;
 
   const result = await filterProfiles({
-    ...query,
+    ...parsedQuery,
     offset,
     page: parsedQuery.page,
   });

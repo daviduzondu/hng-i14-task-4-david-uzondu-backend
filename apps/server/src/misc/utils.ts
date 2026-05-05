@@ -61,7 +61,7 @@ export function validateSchema(
     _res: Response,
     next: NextFunction,
   ) => {
-    const { error } = schema.safeParse(getPayload(req));
+    const { error, data } = schema.safeParse(getPayload(req));
     if (error)
       throw new AppError({
         message: error.issues[0].message,
@@ -111,7 +111,7 @@ export function parseSearchQuery(text: string) {
     for (const [key, values] of Object.entries(map) as [T, string[]][]) {
       if (hasMatch(values)) return key;
     }
-    return null;
+    return undefined;
   };
 
   const extractNumber = (patterns: string[]): number | null => {
@@ -122,16 +122,16 @@ export function parseSearchQuery(text: string) {
         if (num) return parseFloat(num);
       }
     }
-    return null;
+    return undefined;
   };
 
   return {
     gender: matchEnum(profileQueryNlpMapping.gender),
     country_id: countryMatch
       ? countryCodeMapping.countries.find((c) => c.name === countryMatch)?.code
-      : null,
+      : undefined,
     age_group: youngMatch.found
-      ? null
+      ? undefined
       : matchEnum(profileQueryNlpMapping.age_group),
     min_age: youngMatch.found
       ? 16
@@ -205,11 +205,12 @@ export function makeGitHubHeaders(access_token: string) {
 export function getQueryHash(obj: z.infer<typeof profileQuerySchema>) {
   const str = JSON.stringify(
     Object.fromEntries(
-      Object.keys(obj)
-        .sort()
-        .map((key) => [key, obj[key as keyof typeof obj]]),
+      Object.entries(obj)
+        .filter(([_, value]) => (value !== null) || (value !== undefined))
+        .sort(([a], [b]) => a.localeCompare(b)),
     ),
   );
+  console.log(str);
   return crypto.createHash("sha256").update(str).digest("hex");
 }
 

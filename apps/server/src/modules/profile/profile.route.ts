@@ -9,7 +9,7 @@ import {
   uploadCsv,
 } from "@/modules/profile/profile.controller";
 import { authenticate, authorize } from "@/modules/auth/auth.middleware";
-import { getQueryHash, validateSchema } from "@/misc/utils";
+import { getQueryHash, parseSearchQuery, validateSchema } from "@/misc/utils";
 import {
   exportProfilesSchema,
   profileQuerySchema,
@@ -25,13 +25,20 @@ router.get(
   authenticate,
   authorize(["admin", "analyst"]),
   validateSchema(profileQuerySchema, (req) => req.query),
+  cache(300, (req) => getQueryHash(profileQuerySchema.parse(req.query))),
   getProfiles,
 );
 router.get(
   "/search",
   authorize(["admin", "analyst"]),
   validateSchema(profileSearchSchema, (req) => req.query),
-  cache(300, (req) => getQueryHash(req.query)),
+  cache(300, (req) =>
+    getQueryHash(
+      profileQuerySchema.parse(
+        parseSearchQuery(profileSearchSchema.parse(req.query).q),
+      ),
+    ),
+  ),
   searchProfiles,
 );
 router.get(

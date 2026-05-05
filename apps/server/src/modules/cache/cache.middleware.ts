@@ -9,7 +9,7 @@ export function cache(ttlSeconds = 60, getKey?: (r: Request) => string) {
     const cached = await redis.get(key);
 
     if (cached) {
-      console.log("Resource found in cache!");
+      console.log("Resource found in cache!", key);
       return res.json(JSON.parse(cached));
     }
 
