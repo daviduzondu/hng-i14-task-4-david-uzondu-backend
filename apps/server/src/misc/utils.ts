@@ -46,7 +46,6 @@ export const rateLimiterMiddleware =
       .catch(async (err) => {
         const rlRes = await rateLimiter.get(req.ip);
         res
-          .set("Retry-After", String(millisecondsToSeconds(rlRes.msBeforeNext)))
           .status(StatusCodes.TOO_MANY_REQUESTS)
           .json({ status: "error", message: "Too Many Requests" });
       });
