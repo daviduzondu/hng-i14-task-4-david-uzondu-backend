@@ -35,10 +35,14 @@ router.get(
 router.get(
   "/export",
   validateSchema(exportProfilesSchema, (req) => req.query),
-  exportProfile
+  exportProfile,
 );
 router.get("/:id", authorize(["admin", "analyst"]), getProfileById);
 router.delete("/:id", authorize(["admin"]), deleteProfile);
 router.post("/", authorize(["admin"]), validateCreateProfile, createProfile);
-router.post('/upload', authorize(['admin']), uploadCsv);
+router.post(
+  "/upload",
+  authorize(['admin']),
+  uploadCsv,
+);
 export default router;

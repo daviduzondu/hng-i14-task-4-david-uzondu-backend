@@ -29,13 +29,12 @@ import z, { type TypeOf } from "zod";
 import { NoResultError, type ValueExpression } from "kysely";
 import { json2csv } from "json-2-csv";
 import type { AgeGroup, DB, profiles } from "@/db/generated/types";
-import type { Request } from "express";
 import { type Busboy } from "busboy";
 import { parse } from "csv-parse";
 import { countries } from "@/lookup/country-code.lookup.json";
-import { Readable } from "node:stream";
-import { create } from "node:domain";
 import { db } from "@/db/db";
+import _ from "lodash";
+import { error } from "console";
 
 type StandardServiceResponse<S = SuccessResponse, E = ErrorResponse> = Promise<{
   statusCode: number;
@@ -331,7 +330,12 @@ export async function processUpload(bb: Busboy): Promise<{
       await new Promise<void>((resolve, reject) => {
         bb.on("file", (name, stream, info) => {
           stream
-            .pipe(parse({ columns: true }))
+            .pipe(parse({ columns: true, skip_records_with_error: true }))
+            .on("skip", async () => {
+              stats.total_rows++;
+              stats.skipped++;
+              stats.reasons.missing_fields++;
+            })
             .on("data", async (row: z.infer<typeof csvRowSchema>) => {
               chunk.push(row);
               stats.total_rows++;
@@ -348,13 +352,14 @@ export async function processUpload(bb: Busboy): Promise<{
             })
             .on("end", async () => {
               try {
-                if (chunk.length > 0) await processChunk();
+                await processChunk();
                 resolve();
               } catch (err) {
                 reject(err);
               }
             })
             .on("error", (err) => {
+              console.error(err);
               reject(
                 new AppError({
                   code: StatusCodes.INTERNAL_SERVER_ERROR,
@@ -389,18 +394,22 @@ export async function processUpload(bb: Busboy): Promise<{
                 return false;
               }
               if (csvRowSchema.safeParse(b).error) {
+                console.error(b, csvRowSchema.safeParse(b).error);
                 stats.skipped++;
+                stats.reasons.missing_fields++;
                 return false;
               }
               if (!countries.find((c) => c.code === b.country_id)?.name) {
                 stats.skipped++;
+                stats.reasons.missing_fields++;
                 return false;
               }
+
               return true;
             });
 
             if (cleanBatch.length === 0) return;
-            await db
+            const insertResult = await db
               .insertInto("profiles")
               .values(
                 cleanBatch.map((b) => ({
@@ -414,7 +423,7 @@ export async function processUpload(bb: Busboy): Promise<{
                     if (age <= 59) return "adult";
                     return "senior";
                   })(b.age),
-                  country_id: b.country_id.toUpperCase(),
+                  country_id: b.country_id,
                   country_name: countries.find((c) => c.code === b.country_id)!
                     .name,
                   gender: b.gender,
@@ -422,24 +431,19 @@ export async function processUpload(bb: Busboy): Promise<{
                   country_probability: b.country_probability ?? 1,
                 })),
               )
-              .onConflict((oc) =>
-                oc.doUpdateSet((eb) => ({
-                  name: eb.ref("excluded.name"),
-                })),
-              )
-              .returning(['name'])
+              .onConflict((oc) => oc.doNothing())
+              .returning(["name"])
               .execute();
-            // const freshStream = Readable.from([csv]);
-            // await bulkInsertProfiles(freshStream, keys);
 
-            stats.inserted += cleanBatch.length;
+            stats.reasons.duplicate_name +=
+              cleanBatch.length - insertResult.length;
+            stats.skipped += cleanBatch.length - insertResult.length;
+            stats.inserted += insertResult.length;
           }
-          console.log(stats);
         });
-
         bb.on("error", reject);
       });
-
+      console.log(stats);
       return stats;
     },
     {

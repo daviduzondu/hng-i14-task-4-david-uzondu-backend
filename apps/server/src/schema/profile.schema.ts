@@ -134,35 +134,40 @@ const toNumber = (val: unknown) => {
   return val;
 };
 
-export const csvRowSchema = z.object({
-  id: z.string().optional(),
+export const csvRowSchema = z
+  .object({
+    id: z.string().optional(),
 
-  name: z.string().trim(),
+    name: z.string().trim(),
 
-  age: z.preprocess(toNumber, z.number().int().positive()),
+    age: z.preprocess(toNumber, z.number().int().positive()),
 
-  age_group: z.enum(AgeGroup),
+    age_group: z.enum(AgeGroup).optional(),
 
-  gender: z.enum(["male", "female"], {
-    error: "gender must be 'female' or 'male'",
-  }),
+    gender: z.enum(["male", "female"], {
+      error: "gender must be 'female' or 'male'",
+    }),
 
-  country_id: z.string().trim(),
-  country_name: z.string().trim(),
+    country_id: z.string().trim(),
+    country_name: z.string().trim().optional(),
 
-  gender_probability: z.preprocess(
-    toNumber,
-    z
-      .number()
-      .min(0, { error: "gender_probability must be >= 0" })
-      .max(1, { error: "gender_probability must be <= 1" }),
-  ),
+    gender_probability: z.preprocess(
+      toNumber,
+      z
+        .number()
+        .min(0, { error: "gender_probability must be >= 0" })
+        .max(1, { error: "gender_probability must be <= 1" }),
+    ),
 
-  country_probability: z.preprocess(
-    toNumber,
-    z
-      .number()
-      .min(0, { error: "country_probability must be >= 0" })
-      .max(1, { error: "country_probability must be <= 1" }),
-  ),
-});
+    country_probability: z.preprocess(
+      toNumber,
+      z
+        .number()
+        .min(0, { error: "country_probability must be >= 0" })
+        .max(1, { error: "country_probability must be <= 1" }),
+    ),
+  })
+  .refine((data) => data.country_id || data.country_name, {
+    message: "Either country_id or country_name is required",
+    path: ["country_id"],
+  });
