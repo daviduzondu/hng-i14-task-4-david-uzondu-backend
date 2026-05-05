@@ -89,8 +89,9 @@ export const createNewProfile = async ({
 
 export const filterProfiles = async (
   query: z.infer<typeof profileQuerySchema> & { offset?: number },
-) =>
-  await db
+) => {
+
+  return await db
     .selectFrom("profiles")
     .$if(!!query.gender, (qb) =>
       qb.where((eb) =>
@@ -131,6 +132,7 @@ export const filterProfiles = async (
     .selectAll()
     .select(({ eb }) => [eb.fn.count("id").over().as("total")])
     .execute();
+};
 
 export const bulkInsertProfiles = async (
   stream: Stream.Readable,

@@ -9,13 +9,14 @@ import {
   uploadCsv,
 } from "@/modules/profile/profile.controller";
 import { authenticate, authorize } from "@/modules/auth/auth.middleware";
-import { validateSchema } from "@/misc/utils";
+import { getQueryHash, parseSearchQuery, validateSchema } from "@/misc/utils";
 import {
   exportProfilesSchema,
   profileQuerySchema,
   profileSearchSchema,
 } from "@/schema/profile.schema";
 import { exportProfile } from "@/modules/profile/profile.controller";
+import { cache } from "@/modules/cache/cache.middleware";
 
 const router: Router = Router();
 
@@ -24,12 +25,20 @@ router.get(
   authenticate,
   authorize(["admin", "analyst"]),
   validateSchema(profileQuerySchema, (req) => req.query),
+  cache(300, (req) => getQueryHash(profileQuerySchema.parse(req.query))),
   getProfiles,
 );
 router.get(
   "/search",
   authorize(["admin", "analyst"]),
   validateSchema(profileSearchSchema, (req) => req.query),
+  cache(300, (req) =>
+    getQueryHash(
+      profileQuerySchema.parse(
+        parseSearchQuery(profileSearchSchema.parse(req.query).q),
+      ),
+    ),
+  ),
   searchProfiles,
 );
 router.get(
@@ -37,12 +46,8 @@ router.get(
   validateSchema(exportProfilesSchema, (req) => req.query),
   exportProfile,
 );
-router.get("/:id", authorize(["admin", "analyst"]), getProfileById);
+router.get("/:id", authorize(["admin", "analyst"]), cache(300), getProfileById);
 router.delete("/:id", authorize(["admin"]), deleteProfile);
 router.post("/", authorize(["admin"]), validateCreateProfile, createProfile);
-router.post(
-  "/upload",
-  authorize(['admin']),
-  uploadCsv,
-);
+router.post("/upload", authorize(["admin"]), uploadCsv);
 export default router;

@@ -17,8 +17,17 @@ import { requireApiVersion } from "@/modules/profile/profile.middleware";
 import { getUserDetails } from "@/modules/auth/auth.controller";
 import { createRateLimiter, rateLimiterMiddleware } from "@/misc/utils";
 import { minutesToSeconds } from "date-fns";
+import Redis from "ioredis";
 
 const app: Express = express();
+// Connect to Redis
+const redis =
+  process.env.NODE_ENV === "production"
+    ? new Redis(process.env.REDIS_URL as string, {
+        tls: {},
+      })
+    : new Redis();
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -52,10 +61,7 @@ app.use(
   profileRoutes,
 );
 
-app.use(
-  "/auth",
-  authRoutes,
-);
+app.use("/auth", authRoutes);
 
 app.use(
   (
@@ -85,4 +91,4 @@ app.use(
   },
 );
 
-export default app;
+export { app, redis };

@@ -217,7 +217,7 @@ export async function getProfiles(
   const offset = (parsedQuery.page - 1) * parsedQuery.limit;
 
   const result = await filterProfiles({
-    ...query,
+    ...parsedQuery,
     offset,
     page: parsedQuery.page,
   });
@@ -443,7 +443,6 @@ export async function processUpload(bb: Busboy): Promise<{
         });
         bb.on("error", reject);
       });
-      console.log(stats);
       return stats;
     },
     {
