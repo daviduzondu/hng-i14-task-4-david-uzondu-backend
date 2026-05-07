@@ -44,7 +44,7 @@ export const findProfilesByNames = async (names: string[]) => {
     .where((eb) => eb(sql`LOWER(TRIM(name))`, "in", normalizedNames))
     .execute();
 
-  return new Set(rows.map((r) => r.name.toLowerCase().trim()));
+  return rows.map((r) => r.name.toLowerCase().trim());
 };
 
 export const createNewProfile = async ({

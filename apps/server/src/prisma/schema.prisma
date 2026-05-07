@@ -59,8 +59,10 @@ model profiles {
     updated_at          DateTime @default(now()) @db.Timestamptz()
 
     @@index([name]) // Single-column index
-    @@index([country_name, gender, age]) // Composite index
+    @@index([country_id])
     @@index([age])
+    @@index([gender])
+    @@index([country_id, gender, age]) // Composite index
 }
 
 enum Role {

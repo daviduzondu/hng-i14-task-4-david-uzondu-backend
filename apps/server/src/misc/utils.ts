@@ -17,6 +17,7 @@ import {
 import { pool } from "@/db/pool";
 import { millisecondsToSeconds, minutesToSeconds } from "date-fns";
 import crypto from "node:crypto";
+import pino from "pino";
 
 export const createRateLimiter = (options: IRateLimiterOptions) =>
   new RateLimiterPostgres({
@@ -212,6 +213,16 @@ export function getQueryHash(obj: z.infer<typeof profileQuerySchema>) {
   return crypto.createHash("sha256").update(str).digest("hex");
 }
 
+
+export const logger = pino({
+  transport: {
+    target: "pino-pretty",
+    options: {
+      // colorize: true,
+      ignore: "pid,hostname,level,time",
+    },
+  },
+});
 // const hasMatch = (values: string[]) =>
 //  values.some(v => {
 //   const plural = parse(v).nouns().toPlural().text()

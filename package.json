@@ -18,7 +18,9 @@
     "migrate:deploy": "pnpm -F server exec pnpm dlx prisma migrate deploy",
     "generate:dev": "pnpm -F server exec pnpm dlx prisma generate dev",
     "typecheck": "pnpm -F server typecheck",
-    "lint": "pnpm -F server lint"
+    "lint": "pnpm -F server lint",
+    "ac-nr": "export REDIS_ENABLED=false; redis-cli FLUSHALL; autocannon --",
+    "ac-r": "export REDIS_ENABLED=true; autocannon"
   },
   "dependencies": {
     "@hng-i14-task-0-david-uzondu/env": "workspace:*",

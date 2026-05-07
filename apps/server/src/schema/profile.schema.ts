@@ -138,7 +138,7 @@ export const csvRowSchema = z
   .object({
     id: z.string().optional(),
 
-    name: z.string().trim(),
+    name: z.string().trim().min(1),
 
     age: z.preprocess(toNumber, z.number().int().positive()),
 

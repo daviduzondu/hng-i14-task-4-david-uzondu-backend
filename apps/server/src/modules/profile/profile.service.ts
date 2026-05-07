@@ -312,7 +312,7 @@ export async function processUpload(bb: Busboy): Promise<{
   };
 }> {
   const stats = {
-    total_rows: 0,
+    total_rows: -1,
     inserted: 0,
     skipped: 0,
     reasons: {
@@ -321,9 +321,9 @@ export async function processUpload(bb: Busboy): Promise<{
       missing_fields: 0,
     },
   };
-
   const chunk: z.infer<typeof csvRowSchema>[] = [];
   const CHUNK_SIZE = 2000;
+  const existingNamesSet = new Set();
 
   return await catchAndThrowError(
     async () => {
@@ -333,8 +333,6 @@ export async function processUpload(bb: Busboy): Promise<{
             .pipe(parse({ columns: true, skip_records_with_error: true }))
             .on("skip", async () => {
               stats.total_rows++;
-              stats.skipped++;
-              stats.reasons.missing_fields++;
             })
             .on("data", async (row: z.infer<typeof csvRowSchema>) => {
               chunk.push(row);
@@ -373,34 +371,32 @@ export async function processUpload(bb: Busboy): Promise<{
             if (batch.length === 0) return;
 
             // called ONCE per chunk, not once per row
-            // const existingNamesSet = await findProfilesByNames(
-            //   batch.map((b) => b.name),
-            // );
+            const existingNamesArray = await findProfilesByNames(
+              batch
+                .map((b) => ({ ...b, name: b.name.trim().toLowerCase() }))
+                .map((b) => b.name),
+            );
 
             const cleanBatch = batch.filter((b) => {
-              // if (existingNamesSet.has(b.name.toLowerCase().trim())) {
-              //   stats.skipped++;
-              //   stats.reasons.duplicate_name++;
-              //   return false;
-              // }
+              if (existingNamesArray.includes(b.name.toLowerCase().trim())) {
+                // existingNamesSet.add(b.name.toLowerCase().trim());
+                stats.reasons.duplicate_name++;
+                return false;
+              }
               if (csvRowSchema.shape.age.safeParse(b.age).error) {
-                stats.skipped++;
                 stats.reasons.invalid_age++;
                 return false;
               }
               if (Object.keys(b).length < 6) {
-                stats.skipped++;
                 stats.reasons.missing_fields++;
                 return false;
               }
               if (csvRowSchema.safeParse(b).error) {
                 console.error(b, csvRowSchema.safeParse(b).error);
-                stats.skipped++;
                 stats.reasons.missing_fields++;
                 return false;
               }
               if (!countries.find((c) => c.code === b.country_id)?.name) {
-                stats.skipped++;
                 stats.reasons.missing_fields++;
                 return false;
               }
@@ -412,7 +408,10 @@ export async function processUpload(bb: Busboy): Promise<{
             const insertResult = await db
               .insertInto("profiles")
               .values(
-                cleanBatch.map((b) => ({
+                _.uniqBy(
+                  cleanBatch.map((b) => csvRowSchema.safeParse(b).data),
+                  "name",
+                ).map((b) => ({
                   name: b.name,
                   age: Number(b.age),
                   age_group: ((
@@ -435,14 +434,33 @@ export async function processUpload(bb: Busboy): Promise<{
               .returning(["name"])
               .execute();
 
-            stats.reasons.duplicate_name +=
-              cleanBatch.length - insertResult.length;
-            stats.skipped += cleanBatch.length - insertResult.length;
+            // const localDuplicates = batch
+            //   .map((b) => ({ ...b, name: b.name.trim().toLowerCase() }))
+            //   .map((b) => b.name)
+            //   .filter((name) =>
+            //     _.uniqBy(
+            //       batch.map((b) => ({
+            //         ...b,
+            //         name: b.name.trim().toLowerCase(),
+            //       })),
+            //       "name",
+            //     )
+
+            //       .map((b) => b.name)
+            //       .includes(name) === false,
+            //   );
+
+            // stats.reasons.duplicate_name += localDuplicates.length;
+
             stats.inserted += insertResult.length;
           }
         });
         bb.on("error", reject);
       });
+      // stats.reasons.duplicate_name = existingNamesSet.size;
+      // stats.reasons.duplicate_name +=
+      // stats.reasons.duplicate_name += stats.inserted === stats.total_rows ? (stats.total_rows - stats.inserted);
+      stats.skipped = Object.values(stats.reasons).reduce((p, c) => p + c);
       return stats;
     },
     {
