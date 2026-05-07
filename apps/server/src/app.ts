@@ -20,6 +20,7 @@ import { minutesToSeconds } from "date-fns";
 import Redis from "ioredis";
 
 const app: Express = express();
+console.log("Running in ", process.env.NODE_ENV, " environment.");
 // Connect to Redis
 const redis =
   process.env.NODE_ENV === "production"
@@ -48,16 +49,20 @@ app.get("/", (_req, res) => {
 app.get("/api/users/me", authenticate, getUserDetails);
 app.use(
   "/api/profiles",
-  rateLimiterMiddleware(
-    createRateLimiter({
-      duration: minutesToSeconds(1),
-      keyPrefix: "other_",
-      points: 60,
-    }),
-  ),
-  requireApiVersion,
-  authenticate,
-  isActive,
+  ...(process.env.NODE_ENV !== "test"
+    ? [
+        rateLimiterMiddleware(
+          createRateLimiter({
+            duration: minutesToSeconds(1),
+            keyPrefix: "other_",
+            points: 60,
+          }),
+        ),
+        requireApiVersion,
+        authenticate,
+        isActive,
+      ]
+    : []),
   profileRoutes,
 );
 

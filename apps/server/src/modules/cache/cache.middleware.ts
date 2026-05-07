@@ -1,4 +1,5 @@
 import { redis } from "@/app";
+import { logger } from "@/misc/utils";
 import type { Request, Response, NextFunction } from "express";
 
 export function cache(ttlSeconds = 60, getKey?: (r: Request) => string) {
@@ -9,13 +10,10 @@ export function cache(ttlSeconds = 60, getKey?: (r: Request) => string) {
     const cached = await redis.get(key);
 
     if (cached) {
-      console.log(
-        `[${req.method.toUpperCase()}]`,
-        "-",
-        `${req.originalUrl}`,
-        "Resource found in cache!",
-        key,
+      logger.info(
+        `[CACHE HIT] ${req.method.toUpperCase()} ${req.path} | key: ${key}`,
       );
+
       return res.json(JSON.parse(cached));
     }
 
